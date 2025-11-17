@@ -2,10 +2,12 @@ package com.thecheatschool.thecheatschool.server.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thecheatschool.thecheatschool.server.exception.BlogNotFoundException;
 import com.thecheatschool.thecheatschool.server.model.Blog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -29,14 +31,12 @@ public class SanityService {
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
 
+    @Cacheable(value = "blogs", key = "'all-blogs'")
     public List<Blog> fetchAllBlogs() {
         try {
-            String baseUrl = String.format("https://%s.apicdn.sanity.io/v%s/data/query/%s",
-                    projectId, apiVersion, dataset);
-
             String query = "*[_type==\"post\"]|order(publishedAt desc){_id,title,slug,author->{name},mainImage,publishedAt,body}";
 
-            log.info("Fetching all blogs from Sanity");
+            log.info("Fetching all blogs from Sanity (cache miss)");
 
             String response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -52,18 +52,22 @@ public class SanityService {
             JsonNode root = objectMapper.readTree(response);
             JsonNode result = root.get("result");
 
-            return Arrays.asList(objectMapper.treeToValue(result, Blog[].class));
+            List<Blog> blogs = Arrays.asList(objectMapper.treeToValue(result, Blog[].class));
+            log.info("Successfully fetched {} blogs", blogs.size());
+
+            return blogs;
         } catch (Exception e) {
             log.error("Error fetching blogs from Sanity", e);
-            throw new RuntimeException("Failed to fetch blogs", e);
+            throw new RuntimeException("Failed to fetch blogs from CMS", e);
         }
     }
 
+    @Cacheable(value = "blogs", key = "#slug")
     public Blog fetchBlogBySlug(String slug) {
         try {
             String query = "*[_type==\"post\"&&slug.current==\"" + slug + "\"][0]{_id,title,slug,author->{name},mainImage,publishedAt,body}";
 
-            log.info("Fetching blog with slug: {}", slug);
+            log.info("Fetching blog with slug: {} (cache miss)", slug);
 
             String response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -80,14 +84,19 @@ public class SanityService {
             JsonNode result = root.get("result");
 
             if (result == null || result.isNull()) {
-                return null;
+                log.warn("No blog found with slug: {}", slug);
+                throw new BlogNotFoundException(slug);
             }
 
-            return objectMapper.treeToValue(result, Blog.class);
+            Blog blog = objectMapper.treeToValue(result, Blog.class);
+            log.info("Successfully fetched blog: {}", blog.getTitle());
+
+            return blog;
+        } catch (BlogNotFoundException e) {
+            throw e; // Re-throw to be handled by GlobalExceptionHandler
         } catch (Exception e) {
             log.error("Error fetching blog by slug: {}", slug, e);
-            throw new RuntimeException("Failed to fetch blog", e);
+            throw new RuntimeException("Failed to fetch blog from CMS", e);
         }
     }
-
 }
