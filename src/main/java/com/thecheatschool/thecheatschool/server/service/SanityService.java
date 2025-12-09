@@ -99,4 +99,34 @@ public class SanityService {
             throw new RuntimeException("Failed to fetch blog from CMS", e);
         }
     }
+
+    /**
+     * Lightweight health check to verify the CMS (Sanity) is reachable and responding.
+     * This is used by the application health endpoint and should avoid heavy work.
+     */
+    public boolean isHealthy() {
+        try {
+            String query = "*[_type==\"post\"][0..0]{_id}";
+
+            log.debug("Performing Sanity health check");
+
+            String response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .scheme("https")
+                            .host(projectId + ".apicdn.sanity.io")
+                            .path("/v" + apiVersion + "/data/query/" + dataset)
+                            .queryParam("query", query)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            JsonNode root = objectMapper.readTree(response);
+            // If we got a JSON response back without exception, consider Sanity healthy
+            return root != null && root.has("result");
+        } catch (Exception e) {
+            log.error("Sanity health check failed", e);
+            return false;
+        }
+    }
 }

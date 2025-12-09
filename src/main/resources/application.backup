@@ -8,7 +8,7 @@ sanity.dataset=production
 sanity.api-version=2024-01-01
 
 # CORS Configuration - ADD YOUR RENDER URL HERE AFTER DEPLOY
-cors.allowed-origins=http://localhost:5173,https://talhas-projects-the-cheat-schoole210in1357g0.vercel.app,https://*.onrender.com
+cors.allowed-origins=http://localhost:5173,https://talhas-projects-the-cheat-schoole210in1357g0.vercel.app,https://*.onrender.com,https://www.thecheatschool.com
 
 # Cache Configuration
 spring.cache.type=caffeine
