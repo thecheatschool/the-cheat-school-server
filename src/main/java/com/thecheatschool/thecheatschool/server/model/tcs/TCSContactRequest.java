@@ -1,4 +1,4 @@
-package com.thecheatschool.thecheatschool.server.model;
+package com.thecheatschool.thecheatschool.server.model.tcs;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -6,11 +6,13 @@ import lombok.AllArgsConstructor;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ContactRequest {
+@Schema(description = "Contact form submission request for TheCheatSchool registration")
+public class TCSContactRequest {
 
     @NotBlank(message = "Full name is required")
     private String fullName;
@@ -27,13 +29,13 @@ public class ContactRequest {
     private String college;
 
     @NotBlank(message = "Year of study is required")
-    private String yearOfStudy; // "1st Year", "2nd Year", etc.
+    private String yearOfStudy;
 
     @NotBlank(message = "Branch is required")
-    private String branch; // "CSE", "IT", "ECE", etc.
+    private String branch;
 
     @NotBlank(message = "Please tell us how you heard about us")
-    private String hearAboutUs; // "WhatsApp Group", "College", etc.
+    private String hearAboutUs;
 
-    private String hearAboutUsOther; // If they selected "Other"
+    private String hearAboutUsOther;
 }

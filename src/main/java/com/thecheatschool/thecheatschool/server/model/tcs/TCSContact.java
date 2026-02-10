@@ -1,9 +1,10 @@
-package com.thecheatschool.thecheatschool.server.model;
+package com.thecheatschool.thecheatschool.server.model.tcs;
 
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,7 +12,8 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Contact {
+@Schema(description = "Contact submission record in database")
+public class TCSContact {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,11 +44,11 @@ public class Contact {
     private String hearAboutUsOther;
 
     @Column(nullable = false)
-    private String status; // "EMAIL_SENT" or "EMAIL_FAILED"
+    private String status;
 
     @Column(nullable = false)
     private LocalDateTime submittedAt;
 
     @Column
-    private LocalDateTime expiresAt; // 30 days from submission
+    private LocalDateTime expiresAt;
 }

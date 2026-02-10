@@ -1,17 +1,19 @@
 package com.thecheatschool.thecheatschool.server.repository;
 
-import com.thecheatschool.thecheatschool.server.model.Contact;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import com.thecheatschool.thecheatschool.server.model.tcs.TCSContact;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
-public interface ContactRepository extends JpaRepository<Contact, Long> {
+public interface TCSContactRepository extends JpaRepository<TCSContact, Long> {
 
     // Find all failed submissions
-    List<Contact> findByStatus(String status);
+    List<TCSContact> findByStatus(String status);
 
     // Find expired submissions (for cleanup)
-    List<Contact> findByExpiresAtBefore(LocalDateTime date);
+    List<TCSContact> findByExpiresAtBefore(LocalDateTime date);
 }

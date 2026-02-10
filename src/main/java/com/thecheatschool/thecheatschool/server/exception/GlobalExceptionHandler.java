@@ -14,31 +14,24 @@ import jakarta.validation.ConstraintViolationException;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(BlogNotFoundException.class)
-    public ResponseEntity<ApiResponse<Object>> handleBlogNotFound(BlogNotFoundException ex) {
-        log.warn("Blog not found: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiResponse<>("error", null, ex.getMessage()));
-    }
-
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<Object>> handleValidationError(ConstraintViolationException ex) {
         log.warn("Validation error: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse<>("error", null, "Invalid input: " + ex.getMessage()));
+                .body(new ApiResponse<Object>("error", null, "Invalid input: " + ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         log.warn("Type mismatch error: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponse<>("error", null, "Invalid parameter format"));
+                .body(new ApiResponse<Object>("error", null, "Invalid parameter format"));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception ex) {
         log.error("Unexpected error occurred", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponse<>("error", null, "An unexpected error occurred. Please try again later."));
+                .body(new ApiResponse<Object>("error", null, "An unexpected error occurred. Please try again later."));
     }
 }

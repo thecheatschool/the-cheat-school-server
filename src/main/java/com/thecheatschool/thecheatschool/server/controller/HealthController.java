@@ -1,8 +1,9 @@
 package com.thecheatschool.thecheatschool.server.controller;
 
 import com.thecheatschool.thecheatschool.server.model.ApiResponse;
-import com.thecheatschool.thecheatschool.server.repository.ContactRepository;
-import com.thecheatschool.thecheatschool.server.service.SanityService;
+import com.thecheatschool.thecheatschool.server.repository.TCSContactRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -18,17 +19,20 @@ import java.util.Map;
 @RequestMapping("/api/health")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Health Check", description = "Endpoints for monitoring application and service health")
 public class HealthController {
 
-    private final ContactRepository contactRepository;
-    private final SanityService sanityService;
+    private final TCSContactRepository contactRepository;
 
     @GetMapping
+    @Operation(summary = "Health check", description = "Returns the health status of the application and its dependencies")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Application is healthy with status details")
+    })
     public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
         Map<String, Object> details = new HashMap<>();
 
         boolean dbHealthy = false;
-        boolean cmsHealthy = false;
 
         // Basic DB health: try a lightweight query
         try {
@@ -39,28 +43,13 @@ public class HealthController {
             log.error("Database health check failed", e);
         }
 
-        // Sanity CMS health
-        try {
-            cmsHealthy = sanityService.isHealthy();
-        } catch (Exception e) {
-            log.error("Sanity health check threw an exception", e);
-            cmsHealthy = false;
-        }
-
         details.put("database", dbHealthy ? "UP" : "DOWN");
-        details.put("cms", cmsHealthy ? "UP" : "DOWN");
         details.put("app", "UP");
         details.put("timestamp", Instant.now().toString());
-
-        // Treat the app as healthy as long as the app process is running and DB is reachable.
-        // CMS (Sanity) health is reported in the payload but does NOT flip the HTTP status to 503.
-        boolean overallHealthy = dbHealthy; // ignore cmsHealthy for HTTP status
 
         String message;
         if (!dbHealthy) {
             message = "Database is not reachable";
-        } else if (!cmsHealthy) {
-            message = "App and database are up, CMS is experiencing issues";
         } else {
             message = "All systems operational";
         }
@@ -71,5 +60,6 @@ public class HealthController {
         return ResponseEntity.ok(body);
     }
 }
+
 
 

@@ -1,18 +1,19 @@
-package com.thecheatschool.thecheatschool.server.service;
+package com.thecheatschool.thecheatschool.server.service.tcs;
 
-import com.thecheatschool.thecheatschool.server.model.ContactRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.thecheatschool.thecheatschool.server.model.tcs.TCSContactRequest;
+
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
 @Slf4j
-public class EmailService {
+public class TCSEmailService {
 
     @Value("${resend.api.key}")
     private String resendApiKey;
@@ -22,8 +23,12 @@ public class EmailService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public void sendContactEmail(ContactRequest request) {
+    public void sendContactEmail(TCSContactRequest request) {
         String url = "https://api.resend.com/emails";
+        String emailHash = maskEmail(request.getEmail());
+
+        log.info("Starting email send process for contact from college: {}, branch: {}",
+                request.getCollege(), request.getBranch());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -39,21 +44,22 @@ public class EmailService {
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(emailData, headers);
 
         try {
+            log.debug("Sending HTTP request to Resend API endpoint");
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("Email sent successfully to {} for contact: {}", recipientEmail, request.getEmail());
+                log.info("Email sent successfully to recipient, reply-to: {}", emailHash);
             } else {
-                log.error("Failed to send email. Status: {}", response.getStatusCode());
+                log.warn("Failed to send email. HTTP Status: {}", response.getStatusCode());
                 throw new RuntimeException("Failed to send email");
             }
         } catch (Exception e) {
-            log.error("Error sending email via Resend API", e);
+            log.error("Error sending email via Resend API for contact email: {}", emailHash, e);
             throw new RuntimeException("Failed to send email", e);
         }
     }
 
-    private String buildEmailHtml(ContactRequest request) {
+    private String buildEmailHtml(TCSContactRequest request) {
         StringBuilder html = new StringBuilder();
 
         html.append("<!DOCTYPE html>");
@@ -119,8 +125,11 @@ public class EmailService {
     }
 
     // Send confirmation email to the USER
-    public void sendConfirmationEmailToUser(ContactRequest request) {
+    public void sendConfirmationEmailToUser(TCSContactRequest request) {
         String url = "https://api.resend.com/emails";
+        String emailHash = maskEmail(request.getEmail());
+
+        log.info("Sending confirmation email to user: {}", emailHash);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -138,13 +147,13 @@ public class EmailService {
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
             if (response.getStatusCode() == HttpStatus.OK) {
-                log.info("Confirmation email sent to user: {}", request.getEmail());
+                log.info("Confirmation email sent to user successfully");
             } else {
-                log.error("Failed to send confirmation email to user. Status: {}", response.getStatusCode());
+                log.warn("Failed to send confirmation email to user. HTTP Status: {}", response.getStatusCode());
             }
         } catch (Exception e) {
             // Don't throw exception - we don't want to fail the main process if confirmation fails
-            log.error("Error sending confirmation email to user", e);
+            log.warn("Error sending confirmation email to user, proceeding with main process", e);
         }
     }
 
@@ -203,4 +212,20 @@ public class EmailService {
 //        </div>
 //        """, request.getFullName());
 //    }
+
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return "unknown";
+        }
+        String[] parts = email.split("@");
+        String localPart = parts[0];
+        String domain = parts[1];
+
+        if (localPart.length() <= 2) {
+            return "*@" + domain;
+        }
+
+        String masked = localPart.charAt(0) + "*".repeat(localPart.length() - 2) + localPart.charAt(localPart.length() - 1) + "@" + domain;
+        return masked;
+    }
 }

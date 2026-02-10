@@ -1,0 +1,107 @@
+### Health Check API
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+### ==============================================
+### HEALTH CHECK ENDPOINTS
+### ==============================================
+
+### Get Health Status
+GET {{baseUrl}}/api/health
+Accept: {{contentType}}
+
+# Response 200 OK:
+# {
+#   "status": "success",
+#   "data": {
+#     "database": "UP",
+#     "app": "UP",
+#     "timestamp": "2026-02-11T10:30:00Z",
+#     "databaseCountCheck": 5
+#   },
+#   "message": "All systems operational"
+# }
+
+###
+
+### ==============================================
+### CONTACT MANAGEMENT ENDPOINTS
+### ==============================================
+
+### Get Contact Endpoint Information
+GET {{baseUrl}}/api/contact
+Accept: {{contentType}}
+
+# Response 200 OK:
+# {
+#   "status": "success",
+#   "data": "Use POST with JSON body to submit the contact form."
+# }
+
+###
+
+### Submit Contact Form - Valid Request
+POST {{baseUrl}}/api/contact
+Content-Type: {{contentType}}
+
+{
+  "fullName": "Talha Ahmed",
+  "email": "talha@example.com",
+  "phoneNumber": "9876543210",
+  "college": "IIT Delhi",
+  "yearOfStudy": "2nd Year",
+  "branch": "CSE",
+  "hearAboutUs": "WhatsApp Group",
+  "hearAboutUsOther": null
+}
+
+# Response 200 OK:
+# {
+#   "status": "success",
+#   "data": "Message sent successfully! We'll get back to you soon."
+# }
+
+###
+
+### Submit Contact Form - Invalid Email
+POST {{baseUrl}}/api/contact
+Content-Type: {{contentType}}
+
+{
+  "fullName": "Test User",
+  "email": "not-a-valid-email",
+  "phoneNumber": "1234567890",
+  "college": "Test College",
+  "yearOfStudy": "1st Year",
+  "branch": "IT",
+  "hearAboutUs": "Google"
+}
+
+# Response 400 Bad Request:
+# {
+#   "status": "error",
+#   "data": "Invalid request body. Please send JSON with application/json Content-Type."
+# }
+
+###
+
+### Get Failed Contact Submissions
+GET {{baseUrl}}/api/contact/failed
+Accept: {{contentType}}
+
+# Response 200 OK:
+# {
+#   "status": "success",
+#   "data": [
+#     {
+#       "id": 1,
+#       "fullName": "Test User",
+#       "email": "test@example.com",
+#       "status": "EMAIL_FAILED",
+#       "submittedAt": "2026-02-11T10:00:00",
+#       "expiresAt": "2026-03-13T10:00:00"
+#     }
+#   ]
+# }
+
+###
