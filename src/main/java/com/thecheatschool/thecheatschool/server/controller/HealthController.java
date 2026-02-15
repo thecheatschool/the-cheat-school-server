@@ -2,8 +2,6 @@ package com.thecheatschool.thecheatschool.server.controller;
 
 import com.thecheatschool.thecheatschool.server.model.ApiResponse;
 import com.thecheatschool.thecheatschool.server.repository.TCSContactRepository;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,16 +17,11 @@ import java.util.Map;
 @RequestMapping("/api/health")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Health Check", description = "Endpoints for monitoring application and service health")
 public class HealthController {
 
     private final TCSContactRepository contactRepository;
 
     @GetMapping
-    @Operation(summary = "Health check", description = "Returns the health status of the application and its dependencies")
-    @io.swagger.v3.oas.annotations.responses.ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Application is healthy with status details")
-    })
     public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
         Map<String, Object> details = new HashMap<>();
 

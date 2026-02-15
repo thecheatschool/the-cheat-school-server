@@ -6,12 +6,10 @@ import lombok.AllArgsConstructor;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Contact form submission request for TheCheatSchool registration")
 public class TCSContactRequest {
 
     @NotBlank(message = "Full name is required")

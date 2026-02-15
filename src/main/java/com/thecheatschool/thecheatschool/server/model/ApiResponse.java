@@ -2,11 +2,9 @@ package com.thecheatschool.thecheatschool.server.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 @Data
 @AllArgsConstructor
-@Schema(description = "Standard API response wrapper for all endpoints")
 public class ApiResponse<T> {
 
     private String status;

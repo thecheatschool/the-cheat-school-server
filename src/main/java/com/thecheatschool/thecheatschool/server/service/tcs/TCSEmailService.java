@@ -7,10 +7,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.thecheatschool.thecheatschool.server.model.tcs.TCSContactRequest;
+import com.thecheatschool.thecheatschool.server.model.tcs.TCSNotifyMeRequest;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Email service for sending emails using Resend API.
+ */
 @Service
 @Slf4j
 public class TCSEmailService {
@@ -23,6 +27,11 @@ public class TCSEmailService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    /**
+     * Sends a contact email to the recipient using Resend API.
+     *
+     * @param request Contact request object containing email and other details.
+     */
     public void sendContactEmail(TCSContactRequest request) {
         String url = "https://api.resend.com/emails";
         String emailHash = maskEmail(request.getEmail());
@@ -57,6 +66,61 @@ public class TCSEmailService {
             log.error("Error sending email via Resend API for contact email: {}", emailHash, e);
             throw new RuntimeException("Failed to send email", e);
         }
+    }
+
+    public void sendNotifyMeEmail(TCSNotifyMeRequest request) {
+        String url = "https://api.resend.com/emails";
+        String emailHash = maskEmail(request.getEmail());
+
+        log.info("Starting notify-me email send process for user: {}", emailHash);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Bearer " + resendApiKey);
+
+        Map<String, Object> emailData = new HashMap<>();
+        emailData.put("from", "onboarding@resend.dev");
+        emailData.put("to", new String[]{recipientEmail});
+        emailData.put("reply_to", request.getEmail());
+        emailData.put("subject", "Notify Me Signup: " + request.getName());
+        emailData.put("html", buildNotifyMeHtml(request));
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(emailData, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("Notify-me email sent successfully, reply-to: {}", emailHash);
+            } else {
+                log.warn("Failed to send notify-me email. HTTP Status: {}", response.getStatusCode());
+                throw new RuntimeException("Failed to send notify-me email");
+            }
+        } catch (Exception e) {
+            log.error("Error sending notify-me email via Resend API for email: {}", emailHash, e);
+            throw new RuntimeException("Failed to send notify-me email", e);
+        }
+    }
+
+    private String buildNotifyMeHtml(TCSNotifyMeRequest request) {
+        StringBuilder html = new StringBuilder();
+        html.append("<!DOCTYPE html>");
+        html.append("<html><body style='margin:0;padding:20px;background-color:#f8f9fa;font-family:Inter,Arial,sans-serif;'>");
+        html.append("<div style='max-width:600px;margin:0 auto;background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.1);'>");
+        html.append("<div style='background-color:#2b2b2b;padding:20px;text-align:center;'>");
+        html.append("<h1 style='color:#ffffff;margin:0;font-size:20px;letter-spacing:1px;'>NOTIFY ME SIGNUP</h1>");
+        html.append("</div>");
+        html.append("<div style='padding:20px;'>");
+        html.append("<p style='margin:0 0 12px 0;color:#2b2b2b;'>A user wants to be notified when new courses launch.</p>");
+        html.append("<div style='border:1px solid #eeeeee;border-radius:8px;overflow:hidden;'>");
+        html.append("<div style='padding:12px 14px;border-bottom:1px solid #eeeeee;'><strong>Name:</strong> ").append(request.getName()).append("</div>");
+        html.append("<div style='padding:12px 14px;border-bottom:1px solid #eeeeee;'><strong>Email:</strong> ").append(request.getEmail()).append("</div>");
+        html.append("<div style='padding:12px 14px;'><strong>Phone:</strong> ").append(request.getPhoneNumber()).append("</div>");
+        html.append("</div>");
+        html.append("</div>");
+        html.append("</div>");
+        html.append("</body></html>");
+        return html.toString();
     }
 
     private String buildEmailHtml(TCSContactRequest request) {

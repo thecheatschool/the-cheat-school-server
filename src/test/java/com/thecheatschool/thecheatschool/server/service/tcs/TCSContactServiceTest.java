@@ -1,5 +1,6 @@
 package com.thecheatschool.thecheatschool.server.service.tcs;
 
+import com.thecheatschool.thecheatschool.server.service.queue.ContactEmailPublisher;
 import com.thecheatschool.thecheatschool.server.model.tcs.TCSContact;
 import com.thecheatschool.thecheatschool.server.model.tcs.TCSContactRequest;
 import com.thecheatschool.thecheatschool.server.repository.TCSContactRepository;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 
@@ -24,6 +26,9 @@ class TCSContactServiceTest {
 
     @Mock
     private TCSContactRepository contactRepository;
+
+    @Mock
+    private ContactEmailPublisher contactEmailPublisher;
 
     private TCSContactService contactService;
 
@@ -42,7 +47,8 @@ class TCSContactServiceTest {
 
     @BeforeEach
     void setUp() {
-        contactService = new TCSContactService(emailService, contactRepository);
+        contactService = new TCSContactService(emailService, contactRepository, contactEmailPublisher);
+        ReflectionTestUtils.setField(contactService, "queueEnabled", false);
     }
 
     @Test
@@ -51,13 +57,19 @@ class TCSContactServiceTest {
         TCSContactRequest request = createValidRequest();
         doNothing().when(emailService).sendContactEmail(request);
 
+        when(contactRepository.save(any(TCSContact.class)))
+                .thenAnswer(invocation -> {
+                    TCSContact contact = invocation.getArgument(0);
+                    contact.setId(1L);
+                    return contact;
+                });
+
         // Act
         contactService.processContactForm(request);
 
         // Assert
         verify(emailService, times(1)).sendContactEmail(request);
-        // Should NOT save to database on success
-        verify(contactRepository, never()).save(any(TCSContact.class));
+        verify(contactRepository, atLeastOnce()).save(any(TCSContact.class));
     }
 
     @Test
@@ -81,7 +93,7 @@ class TCSContactServiceTest {
         // Assert
         verify(emailService, times(1)).sendContactEmail(request);
         // Should save to database on failure
-        verify(contactRepository, times(1)).save(any(TCSContact.class));
+        verify(contactRepository, times(2)).save(any(TCSContact.class));
     }
 
     @Test
@@ -104,9 +116,9 @@ class TCSContactServiceTest {
         // Act
         contactService.processContactForm(request);
 
-        // Assert - Verify the saved contact has correct data
-        verify(contactRepository).save(contactCaptor.capture());
-        TCSContact savedContact = contactCaptor.getValue();
+        // Assert - Verify the saved contact has correct data (final save)
+        verify(contactRepository, atLeast(2)).save(contactCaptor.capture());
+        TCSContact savedContact = contactCaptor.getAllValues().get(contactCaptor.getAllValues().size() - 1);
 
         assertEquals("Talha Ahmed", savedContact.getFullName());
         assertEquals("talha@example.com", savedContact.getEmail());
@@ -136,9 +148,9 @@ class TCSContactServiceTest {
         // Act
         contactService.processContactForm(request);
 
-        // Assert - Verify status is EMAIL_FAILED
-        verify(contactRepository).save(contactCaptor.capture());
-        TCSContact savedContact = contactCaptor.getValue();
+        // Assert - Verify status is EMAIL_FAILED (final save)
+        verify(contactRepository, atLeast(2)).save(contactCaptor.capture());
+        TCSContact savedContact = contactCaptor.getAllValues().get(contactCaptor.getAllValues().size() - 1);
 
         assertEquals("EMAIL_FAILED", savedContact.getStatus());
     }
@@ -165,9 +177,9 @@ class TCSContactServiceTest {
 
         LocalDateTime afterTest = LocalDateTime.now().plusDays(30);
 
-        // Assert - Verify expiry is set to 30 days from now
-        verify(contactRepository).save(contactCaptor.capture());
-        TCSContact savedContact = contactCaptor.getValue();
+        // Assert - Verify expiry is set to 30 days from now (final save)
+        verify(contactRepository, atLeast(2)).save(contactCaptor.capture());
+        TCSContact savedContact = contactCaptor.getAllValues().get(contactCaptor.getAllValues().size() - 1);
 
         assertNotNull(savedContact.getExpiresAt());
         assertTrue(savedContact.getExpiresAt().isAfter(beforeTest.plusDays(29)));
@@ -196,9 +208,9 @@ class TCSContactServiceTest {
 
         LocalDateTime afterTest = LocalDateTime.now();
 
-        // Assert - Verify submittedAt is set to now
-        verify(contactRepository).save(contactCaptor.capture());
-        TCSContact savedContact = contactCaptor.getValue();
+        // Assert - Verify submittedAt is set to now (final save)
+        verify(contactRepository, atLeast(2)).save(contactCaptor.capture());
+        TCSContact savedContact = contactCaptor.getAllValues().get(contactCaptor.getAllValues().size() - 1);
 
         assertNotNull(savedContact.getSubmittedAt());
         assertTrue(savedContact.getSubmittedAt().isAfter(beforeTest.minusSeconds(1)));
@@ -210,6 +222,13 @@ class TCSContactServiceTest {
         // Arrange
         TCSContactRequest request = createValidRequest();
         doNothing().when(emailService).sendContactEmail(request);
+
+        when(contactRepository.save(any(TCSContact.class)))
+                .thenAnswer(invocation -> {
+                    TCSContact contact = invocation.getArgument(0);
+                    contact.setId(1L);
+                    return contact;
+                });
 
         // Act & Assert - Should not throw any exception
         assertDoesNotThrow(() -> contactService.processContactForm(request));

@@ -105,3 +105,89 @@ Accept: {{contentType}}
 # }
 
 ###
+
+### ==============================================
+### EM (EMIRATIYO INVESTMENTS) CONTACT ENDPOINTS
+### ==============================================
+
+### Get EM Contact Endpoint Information
+GET {{baseUrl}}/api/em/contact
+Accept: {{contentType}}
+
+###
+
+### Submit EM Contact Form - Valid Request
+POST {{baseUrl}}/api/em/contact
+Content-Type: {{contentType}}
+
+{
+  "name": "Talha Ahmed",
+  "company": "Emiratiyo Investments",
+  "phone": "+971501234567",
+  "email": "talha@example.com",
+  "subject": "Investment Inquiry",
+  "message": "Hello, I want to know more about your services."
+}
+
+###
+
+### Submit EM Contact Form - Invalid Email
+POST {{baseUrl}}/api/em/contact
+Content-Type: {{contentType}}
+
+{
+  "name": "Test User",
+  "company": "Test Company",
+  "phone": "+971501234567",
+  "email": "not-a-valid-email",
+  "subject": "Test",
+  "message": "Hi"
+}
+
+###
+
+### Get Failed EM Contact Submissions
+GET {{baseUrl}}/api/em/contact/failed
+Accept: {{contentType}}
+
+###
+
+### ==============================================
+### TCS "NOTIFY ME" (COMING SOON) ENDPOINTS
+### ==============================================
+
+### Get Notify Me Endpoint Information
+GET {{baseUrl}}/api/notify-me
+Accept: {{contentType}}
+
+###
+
+### Submit Notify Me Signup - Valid Request
+POST {{baseUrl}}/api/notify-me
+Content-Type: {{contentType}}
+
+{
+  "name": "Talha Ahmed",
+  "email": "talha@example.com",
+  "phoneNumber": "9876543210"
+}
+
+###
+
+### Submit Notify Me Signup - Duplicate (same email)
+POST {{baseUrl}}/api/notify-me
+Content-Type: {{contentType}}
+
+{
+  "name": "Talha Ahmed Updated",
+  "email": "talha@example.com",
+  "phoneNumber": "9876543210"
+}
+
+###
+
+### Get Failed Notify Me Signups
+GET {{baseUrl}}/api/notify-me/failed
+Accept: {{contentType}}
+
+###
