@@ -37,7 +37,7 @@ public class EmiraService {
     private final EmiraAnalysisRepository emiraAnalysisRepository;
 
     private static final String GEMINI_URL_TEMPLATE =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=%s&alt=sse";
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=%s";
 
     public EmiraService(ObjectMapper objectMapper, CircuitBreakerRegistry circuitBreakerRegistry, EmiraAnalysisRepository emiraAnalysisRepository) {
         this.objectMapper = objectMapper;

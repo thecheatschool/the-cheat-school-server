@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,12 +35,14 @@ public class EmiraHistoryController {
 
         List<Map<String, Object>> history = emiraAnalysisRepository.findAllByOrderByCreatedAtDesc()
                 .stream()
-                .map(analysis -> Map.of(
-                        "id", analysis.getId(),
-                        "area", analysis.getArea(),
-                        "analysisType", analysis.getAnalysisType(),
-                        "createdAt", analysis.getCreatedAt()
-                ))
+                .map(analysis -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", analysis.getId());
+                    map.put("area", analysis.getArea());
+                    map.put("analysisType", analysis.getAnalysisType());
+                    map.put("createdAt", analysis.getCreatedAt());
+                    return map;
+                })
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(history);
