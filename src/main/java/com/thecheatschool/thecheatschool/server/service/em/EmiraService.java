@@ -2,7 +2,9 @@ package com.thecheatschool.thecheatschool.server.service.em;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.thecheatschool.thecheatschool.server.model.em.EmiraAnalysis;
 import com.thecheatschool.thecheatschool.server.model.em.EmiraAnalysisRequest;
+import com.thecheatschool.thecheatschool.server.repository.EmiraAnalysisRepository;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import jakarta.annotation.PostConstruct;
@@ -32,13 +34,15 @@ public class EmiraService {
 
     private final ObjectMapper objectMapper;
     private final CircuitBreaker circuitBreaker;
+    private final EmiraAnalysisRepository emiraAnalysisRepository;
 
     private static final String GEMINI_URL_TEMPLATE =
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=%s&alt=sse";
 
-    public EmiraService(ObjectMapper objectMapper, CircuitBreakerRegistry circuitBreakerRegistry) {
+    public EmiraService(ObjectMapper objectMapper, CircuitBreakerRegistry circuitBreakerRegistry, EmiraAnalysisRepository emiraAnalysisRepository) {
         this.objectMapper = objectMapper;
         this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("emiraGemini");
+        this.emiraAnalysisRepository = emiraAnalysisRepository;
     }
 
     @PostConstruct
@@ -60,10 +64,10 @@ public class EmiraService {
         String prompt = buildPrompt(request);
         long startTime = System.currentTimeMillis();
 
-        boolean success = callGemini(prompt, primaryKey, emitter);
+        boolean success = callGemini(prompt, primaryKey, emitter, request);
         if (!success) {
             log.warn("Primary key failed, trying backup key");
-            success = callGemini(prompt, backupKey, emitter);
+            success = callGemini(prompt, backupKey, emitter, request);
         }
 
         if (!success) {
@@ -81,7 +85,7 @@ public class EmiraService {
         }
     }
 
-    private boolean callGemini(String prompt, String key, SseEmitter emitter) {
+    private boolean callGemini(String prompt, String key, SseEmitter emitter, EmiraAnalysisRequest request) {
         try {
             String urlStr = String.format(GEMINI_URL_TEMPLATE, key);
             URL url = new URL(urlStr);
@@ -109,6 +113,7 @@ public class EmiraService {
                 return false;
             }
 
+            StringBuilder fullResponseText = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
@@ -127,6 +132,7 @@ public class EmiraService {
                                     String token = parts.get(0).path("text").asText();
                                     if (!token.isEmpty()) {
                                         emitter.send(SseEmitter.event().data(token));
+                                        fullResponseText.append(token);
                                     }
                                 }
                             }
@@ -138,6 +144,21 @@ public class EmiraService {
             }
 
             emitter.complete();
+
+            // Save history
+            try {
+                emiraAnalysisRepository.save(
+                    EmiraAnalysis.builder()
+                        .area(request.getArea())
+                        .analysisType(request.getAnalysisType().toString())
+                        .responseText(fullResponseText.toString())
+                        .build()
+                );
+                log.info("Emira analysis saved to history for area: {}", request.getArea());
+            } catch (Exception e) {
+                log.error("Failed to save Emira analysis history", e);
+            }
+
             return true;
 
         } catch (Exception e) {
