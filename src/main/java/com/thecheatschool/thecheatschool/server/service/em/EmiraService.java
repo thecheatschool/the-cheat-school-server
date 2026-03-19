@@ -8,14 +8,17 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -27,14 +30,13 @@ public class EmiraService {
     @Value("${emira.gemini.backup-key}")
     private String backupKey;
 
-    private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final CircuitBreaker circuitBreaker;
 
-    private static final String GEMINI_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=%s";
+    private static final String GEMINI_URL_TEMPLATE =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=%s&alt=sse";
 
-    public EmiraService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper, CircuitBreakerRegistry circuitBreakerRegistry) {
-        this.webClient = webClientBuilder.build();
+    public EmiraService(ObjectMapper objectMapper, CircuitBreakerRegistry circuitBreakerRegistry) {
         this.objectMapper = objectMapper;
         this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("emiraGemini");
     }
@@ -45,95 +47,104 @@ public class EmiraService {
         log.info("Emira circuit breaker reset on startup");
     }
 
+    @Async("taskExecutor")
     public void analyse(EmiraAnalysisRequest request, SseEmitter emitter) {
+        log.info("=== EMIRA ANALYSE CALLED === type: {}, area: {}",
+            request.getAnalysisType(), request.getArea());
+
         if (!circuitBreaker.tryAcquirePermission()) {
             sendError(emitter, "Emira is temporarily unavailable. Please try again.");
             return;
         }
 
         String prompt = buildPrompt(request);
-        AtomicBoolean hasSentFallback = new AtomicBoolean(false);
-        
-        // Attempt with primary key first
-        callGeminiWithFallback(prompt, primaryKey, backupKey, emitter, hasSentFallback);
-    }
-
-    private void callGeminiWithFallback(String prompt, String currentKey, String fallbackKey, SseEmitter emitter, AtomicBoolean hasSentFallback) {
         long startTime = System.currentTimeMillis();
-        String url = String.format(GEMINI_URL_TEMPLATE, currentKey);
 
-        Map<String, Object> body = Map.of(
-            "contents", List.of(
-                Map.of("parts", List.of(
-                    Map.of("text", prompt)
-                ))
-            )
-        );
+        boolean success = callGemini(prompt, primaryKey, emitter);
+        if (!success) {
+            log.warn("Primary key failed, trying backup key");
+            success = callGemini(prompt, backupKey, emitter);
+        }
 
-        webClient.post()
-            .uri(url)
-            .bodyValue(body)
-            .retrieve()
-            .bodyToFlux(String.class)
-            .subscribe(
-                chunk -> {
-                    try {
-                        String token = extractTokenFromChunk(chunk);
-                        if (token != null) {
-                            emitter.send(SseEmitter.event().data(token));
-                        }
-                    } catch (Exception e) {
-                        log.error("Error processing Gemini chunk", e);
-                    }
-                },
-                error -> {
-                    log.error("Gemini call failed for key: {}", currentKey.substring(0, 5) + "...", error);
-                    
-                    if (fallbackKey != null && !hasSentFallback.get()) {
-                        hasSentFallback.set(true);
-                        callGeminiWithFallback(prompt, fallbackKey, null, emitter, hasSentFallback);
-                    } else {
-                        // Record failure in circuit breaker only if BOTH keys fail
-                        circuitBreaker.onError(System.currentTimeMillis() - startTime, java.util.concurrent.TimeUnit.MILLISECONDS, error);
-                        sendError(emitter, "Emira is temporarily unavailable. Please try again.");
-                    }
-                },
-                () -> {
-                    // Record success in circuit breaker
-                    circuitBreaker.onSuccess(System.currentTimeMillis() - startTime, java.util.concurrent.TimeUnit.MILLISECONDS);
-                    try {
-                        emitter.complete();
-                    } catch (Exception e) {
-                        log.error("Error completing emitter", e);
-                    }
-                }
+        if (!success) {
+            circuitBreaker.onError(
+                System.currentTimeMillis() - startTime,
+                TimeUnit.MILLISECONDS,
+                new RuntimeException("Both Gemini keys failed")
             );
+            sendError(emitter, "Emira is temporarily unavailable. Please try again.");
+        } else {
+            circuitBreaker.onSuccess(
+                System.currentTimeMillis() - startTime,
+                TimeUnit.MILLISECONDS
+            );
+        }
     }
 
-    private String extractTokenFromChunk(String chunk) {
+    private boolean callGemini(String prompt, String key, SseEmitter emitter) {
         try {
-            // Remove leading/trailing brackets or commas if it's a stream array
-            String cleanChunk = chunk.trim();
-            if (cleanChunk.startsWith("[")) cleanChunk = cleanChunk.substring(1);
-            if (cleanChunk.endsWith("]")) cleanChunk = cleanChunk.substring(0, cleanChunk.length() - 1);
-            if (cleanChunk.startsWith(",")) cleanChunk = cleanChunk.substring(1);
-            
-            if (cleanChunk.isEmpty()) return null;
+            String urlStr = String.format(GEMINI_URL_TEMPLATE, key);
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30_000);
+            conn.setReadTimeout(180_000);
 
-            JsonNode node = objectMapper.readTree(cleanChunk);
-            if (node.has("candidates") && node.get("candidates").isArray()) {
-                JsonNode candidate = node.get("candidates").get(0);
-                if (candidate.has("content") && candidate.get("content").has("parts")) {
-                    JsonNode parts = candidate.get("content").get("parts");
-                    if (parts.isArray() && parts.size() > 0) {
-                        return parts.get(0).get("text").asText();
+            String body = String.format(
+                "{\"contents\":[{\"parts\":[{\"text\":%s}]}]}",
+                objectMapper.writeValueAsString(prompt)
+            );
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(body.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int status = conn.getResponseCode();
+            log.info("Gemini response status: {}", status);
+
+            if (status != 200) {
+                log.error("Gemini returned non-200: {}", status);
+                return false;
+            }
+
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("data: ")) {
+                        String data = line.substring(6).trim();
+                        if (data.isEmpty()) continue;
+                        try {
+                            JsonNode node = objectMapper.readTree(data);
+                            JsonNode candidates = node.path("candidates");
+                            if (candidates.isArray() && candidates.size() > 0) {
+                                JsonNode parts = candidates.get(0)
+                                    .path("content")
+                                    .path("parts");
+                                if (parts != null && parts.isArray() && parts.size() > 0) {
+                                    String token = parts.get(0).path("text").asText();
+                                    if (!token.isEmpty()) {
+                                        emitter.send(SseEmitter.event().data(token));
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.trace("Could not parse chunk: {}", data);
+                        }
                     }
                 }
             }
+
+            emitter.complete();
+            return true;
+
         } catch (Exception e) {
-            log.trace("Failed to parse potential chunk: {}", chunk);
+            log.error("Gemini call failed with key starting {}: {}",
+                key.substring(0, 8), e.getMessage());
+            return false;
         }
-        return null;
     }
 
     private void sendError(SseEmitter emitter, String message) {

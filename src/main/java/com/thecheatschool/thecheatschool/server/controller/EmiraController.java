@@ -29,28 +29,36 @@ public class EmiraController {
     }
 
     @PostMapping(value = "/analyse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public ResponseEntity<Object> analyse(
+    public SseEmitter analyse(
             @RequestHeader(value = "X-Internal-Key", required = false) String internalKey,
             @RequestBody EmiraAnalysisRequest request) {
+
+        // 3 minute timeout for long Gemini responses
+        SseEmitter emitter = new SseEmitter(180_000L);
 
         // Validate secret
         if (internalKey == null || !internalKey.equals(internalSecret)) {
             log.warn("Unauthorized access attempt to Emira Analyst");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .body("Unauthorised");
+            try {
+                emitter.send(SseEmitter.event().name("error").data("Unauthorised"));
+                emitter.complete();
+            } catch (Exception e) {
+                log.error("Failed to send error event", e);
+            }
+            return emitter;
         }
 
         // Rate limiting check
         if (!emiraBucket.tryConsume(1)) {
             log.warn("Rate limit exceeded for Emira Analyst");
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .body("Too many requests. Please wait a moment.");
+            try {
+                emitter.send(SseEmitter.event().name("error").data("Too many requests. Please wait a moment."));
+                emitter.complete();
+            } catch (Exception e) {
+                log.error("Failed to send error event", e);
+            }
+            return emitter;
         }
-
-        // 3 minute timeout for long Gemini responses
-        SseEmitter emitter = new SseEmitter(180_000L);
 
         // Run the analysis asynchronously
         try {
@@ -65,6 +73,6 @@ public class EmiraController {
             }
         }
 
-        return ResponseEntity.ok(emitter);
+        return emitter;
     }
 }
