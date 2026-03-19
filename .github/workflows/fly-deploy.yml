@@ -21,7 +21,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Fly Registry
-        run: flyctl auth docker -t $FLY_API_TOKEN
+        run: flyctl auth docker
 
       - name: Build and push image
         uses: docker/build-push-action@v5
