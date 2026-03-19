@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.thecheatschool.thecheatschool.server.model.em.EmiraAnalysisRequest;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,12 +31,18 @@ public class EmiraService {
     private final ObjectMapper objectMapper;
     private final CircuitBreaker circuitBreaker;
 
-    private static final String GEMINI_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=%s";
+    private static final String GEMINI_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?key=%s";
 
     public EmiraService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper, CircuitBreakerRegistry circuitBreakerRegistry) {
         this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
         this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("emiraGemini");
+    }
+
+    @PostConstruct
+    public void resetCircuitBreaker() {
+        circuitBreaker.reset();
+        log.info("Emira circuit breaker reset on startup");
     }
 
     public void analyse(EmiraAnalysisRequest request, SseEmitter emitter) {
