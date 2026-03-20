@@ -20,7 +20,7 @@ public class EMBusinessSetupService {
 
     public void processBusinessSetup(EMBusinessSetupRequest request) {
         String requestId = generateRequestId();
-        log.info("[{}] Processing EM business setup submission", requestId);
+        log.info("[{}] Processing EM-business setup submission", requestId);
 
         EMBusinessSetupSubmission submission = buildSubmission(request);
         submission.setStatus("PENDING_EMAIL");
