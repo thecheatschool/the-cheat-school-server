@@ -22,10 +22,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class EmailService {
 
-    @Value("${em.resend.api.key}")
+    @Value("${em.resend.api.key:}")
     private String resendApiKey;
 
-    @Value("${em.contact.recipient.email}")
+    @Value("${em.contact.recipient.email:}")
     private String recipientEmail;
 
     @Value("${em.contact.from.email:onboarding@resend.dev}")

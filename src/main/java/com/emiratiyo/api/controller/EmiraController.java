@@ -25,7 +25,7 @@ public class EmiraController {
     @Qualifier("emiraBucket")
     private final Bucket emiraBucket;
 
-    @Value("${emira.internal.secret}")
+    @Value("${emira.internal.secret:}")
     private String internalSecret;
 
     @PostMapping(value = "/analyse")

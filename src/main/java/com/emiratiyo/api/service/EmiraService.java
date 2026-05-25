@@ -23,10 +23,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class EmiraService {
 
-    @Value("${emira.gemini.primary-key}")
+    @Value("${emira.gemini.primary-key:}")
     private String primaryKey;
 
-    @Value("${emira.gemini.backup-key}")
+    @Value("${emira.gemini.backup-key:}")
     private String backupKey;
 
     private final EmiraHistoryService emiraHistoryService;

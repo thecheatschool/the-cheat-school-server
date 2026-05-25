@@ -57,7 +57,7 @@ app = 'emiratiyo-api'
 primary_region = 'bom'
 
 [http_service]
-  internal_port = 8081
+  internal_port = 8080
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true

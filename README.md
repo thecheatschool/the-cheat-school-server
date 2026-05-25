@@ -73,7 +73,7 @@ mvn clean install
 mvn spring-boot:run
 ```
 
-The application starts on [http://localhost:8081](http://localhost:8081) by default.
+The application starts on [http://localhost:8080](http://localhost:8080) by default.
 
 ---
 

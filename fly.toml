@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for thecheatschool-api on 2025-12-09T15:21:35+05:30
+# fly.toml app configuration file generated for emiratiyo-api on 2025-12-09T15:21:35+05:30
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'thecheatschool-api'
+app = 'emiratiyo-api'
 primary_region = 'bom'
 
 [build]

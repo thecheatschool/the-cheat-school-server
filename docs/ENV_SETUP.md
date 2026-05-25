@@ -8,7 +8,7 @@ Create a file named `src/main/resources/application-local.properties` (this file
 
 | Property | Example Value |
 |---|---|
-| `server.port` | `8081` |
+| `server.port` | `8080` |
 | `spring.application.name` | `emiratiyo-api` |
 | `cors.allowed-origins` | `http://localhost:5173,https://emiratiyo.com` |
 

@@ -17,10 +17,10 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 @EnableWebSecurity
 public class SecurityConfig {
 
-        @Value("${spring.boot.admin.username}")
+        @Value("${spring.boot.admin.username:admin}")
         private String adminUsername;
 
-        @Value("${spring.boot.admin.password}")
+        @Value("${spring.boot.admin.password:password}")
         private String adminPassword;
 
         @Bean

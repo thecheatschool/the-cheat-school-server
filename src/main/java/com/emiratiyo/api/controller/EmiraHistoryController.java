@@ -27,7 +27,7 @@ public class EmiraHistoryController {
 
     private final EmiraHistoryService emiraHistoryService;
 
-    @Value("${emira.internal.secret}")
+    @Value("${emira.internal.secret:}")
     private String internalSecret;
 
     @GetMapping
