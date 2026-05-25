@@ -1,31 +1,25 @@
-# The Cheat School & Emiratiyo Investments Backend
+# Emiratiyo Investments API
 
-A unified Spring Boot monolith backend serving two distinct platforms: The Cheat School (TCS) and Emiratiyo Investments (EM). Follows a layered architecture to manage multiple services within a single codebase.
+A Spring Boot monolith backend serving the Emiratiyo Investments (EM) platform. This project is architected with a focus on resilience, non-blocking I/O, and strict data separation.
 
 ---
 
 ## Architecture Overview
 
-- **Controllers** — Handle incoming HTTP requests for both TCS and EM
-- **Services** — Domain-specific logic (e.g. `EMContactService` vs `TCSContactService`)
-- **Models/Repositories** — Dedicated data entities and JPA repositories per service
-- **Shared Infrastructure** — Spring `@Async` thread pool (email), Bucket4j (rate limiting), Resilience4j (circuit breaking), Upstash Redis (caching)
+- **Package-by-Layer Architecture** — Clean separation of concerns across `controller`, `service`, `repository`, `entity`, and `dto`.
+- **Entities vs. DTOs** — Strict separation between database persistence models (`@Entity`) and API data transfer objects (`record`).
+- **Reactive Resilience** — Implementation of Circuit Breaker and Retry patterns for external AI and Email services.
+- **API Versioning** — All endpoints follow the `/api/v1/` standard for long-term maintainability.
 
 ---
 
-> **Migration Notice**
-> Previously maintained at [github.com/thecheatschool/the-cheat-school-server](https://github.com/thecheatschool/the-cheat-school-server).
-> Now maintained at [github.com/EmiratiyoInvestments/emiratiyo-investments-api](https://github.com/EmiratiyoInvestments/emiratiyo-investments-api).
+## Technical Upgrades (Industry-Grade)
 
----
-
-## Live API
-
-```
-https://thecheatschool-api.fly.dev
-```
-
-Deployed on **Fly.io** · Region: `bom` (Mumbai)
+- **Java 21 Records** — Used for all DTOs (Request/Response) to ensure thread-safe, immutable data carriers.
+- **Spring WebClient** — Fully non-blocking, reactive HTTP client replacing legacy `RestTemplate` for all external API integrations (Gemini AI & Resend).
+- **Custom Exception Layer** — A structured, business-driven exception hierarchy with a centralized `@RestControllerAdvice` handler.
+- **Lombok @Builder** — Consistent use of the Builder pattern across all data models for readable and safe object construction.
+- **Caching** — Optimized Upstash Redis integration with Spring Cache for history and lookups.
 
 ---
 
@@ -33,19 +27,16 @@ Deployed on **Fly.io** · Region: `bom` (Mumbai)
 
 | Layer | Technology |
 |---|---|
-| Language | Java 17 |
-| Framework | Spring Boot 3.5.7 |
+| Language | Java 21 |
+| Framework | Spring Boot 3.4.5 |
 | Database | PostgreSQL (Neon serverless) |
 | ORM | Spring Data JPA / Hibernate |
-| Email | Resend API (via `RestTemplate`) |
+| HTTP Client | Spring WebClient (Reactive) |
 | AI | Google Gemini 2.5 Flash |
-| Async | Spring `@Async` + `ThreadPoolTaskExecutor` |
+| Resilience | Resilience4j (Circuit Breaker) |
 | Cache | Upstash Redis (Spring Cache) |
-| Rate Limiting | In-memory sliding window interceptor |
-| Circuit Breaker | Resilience4j |
-| Streaming | Spring SSE (`SseEmitter`) |
+| Rate Limiting | Bucket4j Interceptor |
 | Monitoring | Spring Boot Admin (embedded) |
-| Container | Docker |
 | Deployment | Fly.io |
 
 ---
@@ -53,21 +44,18 @@ Deployed on **Fly.io** · Region: `bom` (Mumbai)
 ## Project Structure
 
 ```
-thecheatschoolserver/
-├── src/main/java/com/thecheatschool/thecheatschool/server/
-│   ├── config/                  # CORS, Redis, Security, Async, RateLimiter configs
-│   ├── controller/              # REST controllers for TCS, EM, and shared endpoints
-│   ├── exception/               # Global exception handler
-│   ├── model/
-│   │   ├── tcs/                 # TCS request/entity models
-│   │   └── em/                  # EM request/entity models (incl. Emira AI)
+emiratiyo-api/
+├── src/main/java/com/emiratiyo/api/
+│   ├── config/                  # WebClient, Redis, Security, Async, RateLimiter configs
+│   ├── controller/              # Versioned REST controllers (/api/v1/...)
+│   ├── dto/                     # Immutable Java Records for API Requests/Responses
+│   ├── entity/                  # JPA Database Entities
+│   ├── exception/               # Custom business exceptions & Global Handler
 │   ├── repository/              # Spring Data JPA repositories
-│   ├── service/
-│   │   ├── tcs/                 # TCS business logic + email service
-│   │   └── em/                  # EM business logic, email service, Emira AI service
-│   └── util/                    # Input sanitizer, rate-limiting interceptor
+│   ├── service/                 # Business logic & AI/Email integration services
+│   └── util/                    # Shared utility classes and interceptors
 ├── src/main/resources/
-│   └── application.properties   # All environment configuration
+│   └── application.properties   # Environment configuration & Resilience4j settings
 ├── Dockerfile
 ├── fly.toml                     # Fly.io deployment config
 └── pom.xml
@@ -77,82 +65,46 @@ thecheatschoolserver/
 
 ## Getting Started
 
-**Prerequisites:** Java 17+, Maven 3.6+, PostgreSQL (or Neon.tech), Upstash Redis
+**Prerequisites:** Java 21, Maven 3.9+, PostgreSQL, Upstash Redis
 
 ```bash
 git clone https://github.com/EmiratiyoInvestments/emiratiyo-investments-api.git
 mvn clean install
-mvn test
 mvn spring-boot:run
 ```
+
+The application starts on [http://localhost:8081](http://localhost:8081) by default.
 
 ---
 
 ## Configuration & Secrets
 
-**TCS:** `resend.api.key`, `contact.recipient.email`
-
-**EM:** `em.resend.api.key`, `em.contact.recipient.email`, `emira.gemini.primary-key`, `emira.internal.secret`
-
-See [docs/tcs/ENV_SETUP.md](docs/tcs/ENV_SETUP.md) and [docs/emiratiyo/ENV_SETUP.md](docs/emiratiyo/ENV_SETUP.md) for full details.
-
----
-
-## Deployment
-
-**Platform:** Fly.io — `https://thecheatschool-api.fly.dev`
-
-```bash
-flyctl auth login --email thecheatschoolcode@gmail.com
-flyctl secrets list
-flyctl deploy
-flyctl logs
-```
-
-See [docs/tcs/DEPLOYMENT.md](docs/tcs/DEPLOYMENT.md) and [docs/emiratiyo/DEPLOYMENT.md](docs/emiratiyo/DEPLOYMENT.md) for full details.
+The following keys are required in `application.properties`:
+- `em.resend.api.key`: API key for Resend email dispatch.
+- `emira.gemini.primary-key`: Google Gemini AI key.
+- `emira.internal.secret`: Shared secret for internal analyst endpoints.
+- `spring.data.redis.*`: Upstash Redis credentials.
 
 ---
 
-## Monitoring
+## Monitoring & Health
 
-This server embeds **Spring Boot Admin** — a full operational dashboard running inside the same process.
+This server embeds **Spring Boot Admin** for real-time operational monitoring.
 
-| Environment | URL |
-|---|---|
-| Production | [https://thecheatschool-api.fly.dev/](https://thecheatschool-api.fly.dev/) |
+- **URL**: [https://emiratiyo-api.fly.dev/](https://emiratiyo-api.fly.dev/) (Root)
+- **Health**: `/actuator/health` (Exposes DB, Redis, and Circuit Breaker status)
 
-Navigate to the root URL and log in with the credentials configured in `application.properties`:
-
+**Dashboard Credentials:**
 ```
 Username: admin
-Password: tcs-monitor-2025
+Password: [configured in application.properties]
 ```
-
-The dashboard exposes: health indicators, JVM metrics, live loggers, environment variables, bean graph, thread dump, and Redis cache stats — all without a separate admin process.
 
 ---
 
 ## Documentation
 
-### The Cheat School (TCS)
-
-| Doc | Description |
-|---|---|
-| [ARCHITECTURE.md](docs/tcs/ARCHITECTURE.md) | System design, layers, auth, middleware |
-| [API_REFERENCE.md](docs/tcs/API_REFERENCE.md) | All TCS endpoints |
-| [ENV_SETUP.md](docs/tcs/ENV_SETUP.md) | Environment variables, local setup |
-| [DEPLOYMENT.md](docs/tcs/DEPLOYMENT.md) | Fly.io deployment, secrets, rollback |
-| [CONTRIBUTING.md](docs/tcs/CONTRIBUTING.md) | Branching, PRs, code style |
-
-### Emiratiyo Investments (EM)
-
-| Doc | Description |
-|---|---|
-| [ARCHITECTURE.md](docs/emiratiyo/ARCHITECTURE.md) | System design, layers, auth, Emira AI |
-| [API_REFERENCE.md](docs/emiratiyo/API_REFERENCE.md) | All EM endpoints |
-| [ENV_SETUP.md](docs/emiratiyo/ENV_SETUP.md) | Environment variables, local setup |
-| [DEPLOYMENT.md](docs/emiratiyo/DEPLOYMENT.md) | Fly.io deployment, secrets, rollback |
-| [CONTRIBUTING.md](docs/emiratiyo/CONTRIBUTING.md) | Branching, PRs, code style |
+- [API_REFERENCE.md](docs/API_REFERENCE.md) — Full endpoint documentation and request/response schemas.
 
 ---
 
