@@ -22,7 +22,7 @@ public class BusinessSetupController {
 
     private final BusinessSetupService businessSetupService;
     private final BusinessSetupRepository businessSetupRepository;
-
+ 
     @PostMapping
     public ResponseEntity<ApiResponse<String>> submit(@Valid @RequestBody BusinessSetupRequest request) {
         log.info("Received business setup submission from: {}", request.email());
