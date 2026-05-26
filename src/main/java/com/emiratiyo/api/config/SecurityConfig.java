@@ -12,10 +12,16 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.web.filter.ForwardedHeaderFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+        @Bean
+        public ForwardedHeaderFilter forwardedHeaderFilter() {
+                return new ForwardedHeaderFilter();
+        }
 
         @Value("${spring.boot.admin.username:admin}")
         private String adminUsername;
@@ -29,13 +35,14 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(
                                                                 "/assets/**", "/actuator/**", "/instances/**",
-                                                                "/api/**",
+                                                                "/api/**", "/favicon.ico",
                                                                 "/login", "/logout", "/*.js", "/*.css", "/*.ico",
                                                                 "/*.png")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
                                 .formLogin(form -> form
                                                 .loginPage("/login")
+                                                .defaultSuccessUrl("/", true)
                                                 .permitAll())
                                 .logout(logout -> logout.logoutUrl("/logout"))
                                 .httpBasic(Customizer.withDefaults())

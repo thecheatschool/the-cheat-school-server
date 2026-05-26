@@ -1,0 +1,50 @@
+# flyctl launch added from .github/java-upgrade/.gitignore
+
+.github/java-upgrade/**/**/*
+
+# flyctl launch added from .gitignore
+**/HELP.md
+**/target
+**/.mvn/wrapper/maven-wrapper.jar
+!**/**/src/main/**/target
+!**/**/src/test/**/target
+
+# Application secrets
+**/src/main/resources/application.properties
+**/.env
+
+### STS ###
+**/.apt_generated
+**/.classpath
+**/.factorypath
+**/.project
+**/.settings
+**/.springBeans
+**/.sts4-cache
+
+### IntelliJ IDEA ###
+**/.idea
+**/*.iws
+**/*.iml
+**/*.ipr
+
+### NetBeans ###
+nbproject/private
+nbbuild
+dist
+nbdist
+.nb-gradle
+**/build
+!**/**/src/main/**/build
+!**/**/src/test/**/build
+
+### VS Code ###
+**/.vscode
+
+# flyctl launch added from .idea/.gitignore
+# Default ignored files
+.idea/shelf
+.idea/workspace.xml
+# Editor-based HTTP Client requests
+.idea/httpRequests
+fly.toml
