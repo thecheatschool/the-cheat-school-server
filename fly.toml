@@ -3,14 +3,6 @@ primary_region = 'bom'
 
 [build]
 
-[http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = true
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
-
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
@@ -19,6 +11,10 @@ primary_region = 'bom'
 [[services]]
   internal_port = 8080
   protocol = "tcp"
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
   [services.concurrency]
     hard_limit = 25
